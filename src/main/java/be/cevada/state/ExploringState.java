@@ -1,0 +1,142 @@
+package be.cevada.state;
+
+import be.cevada.combat.CombatEngine;
+import be.cevada.models.Enemy;
+import be.cevada.models.Place;
+import be.cevada.models.Player;
+import be.cevada.models.Quest;
+import be.cevada.panels.WorldPanel;
+import com.googlecode.lanterna.TextColor;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+public class ExploringState implements GameState {
+
+    private final GameStateManager manager;
+    private static final Random RNG = new Random();
+
+    private static final String[] EXPLORE_EVENTS = {
+            "You find a narrow path through the trees...",
+            "You hear distant howling in the darkness.",
+            "A cold wind blows through the forest.",
+            "You discover old footprints in the mud.",
+            "The trees seem to close in around you.",
+            "You stumble upon a clearing.",
+            "A strange fog rolls in.",
+    };
+
+    public ExploringState(GameStateManager manager) {
+        this.manager = manager;
+    }
+
+    @Override
+    public void enter() {
+        WorldPanel world = manager.getWorldPanel();
+        world.setLocation("Dark Forest");
+        world.setDescription("Twisted trees surround you.\nThe air is thick with mystery.");
+        world.clearLog();
+        world.addLogEntry("> You look around cautiously.", TextColor.ANSI.WHITE);
+        manager.syncStats();
+        refreshActions();
+    }
+
+    @Override
+    public void exit() {
+    }
+
+    @Override
+    public void handleAction(String actionLabel) {
+        switch (actionLabel) {
+            case "Explore" -> explore();
+            case "Rest" -> rest();
+            case "Inventory" -> inventory();
+            case "Places" -> manager.transitionTo(new PlacesState(manager));
+            case "Quit" -> manager.getOnQuit().run();
+        }
+    }
+
+    private void refreshActions() {
+        List<String> actions = new ArrayList<>();
+        actions.add("Explore");
+        actions.add("Rest");
+        actions.add("Inventory");
+        if (manager.getPlaceManager().hasDiscoveredPlaces()) {
+            actions.add("Places");
+        }
+        actions.add("Quit");
+        manager.setActions(actions.toArray(new String[0]));
+    }
+
+    private void explore() {
+        WorldPanel world = manager.getWorldPanel();
+        Player player = manager.getPlayer();
+
+        Place discovered = manager.getPlaceManager().tryDiscover();
+        if (discovered != null) {
+            world.addLogEntry("> " + discovered.getDiscoveryMessage(), TextColor.ANSI.GREEN_BRIGHT);
+            world.addLogEntry("> \"" + discovered.getName() + "\" is now available in Places!", TextColor.ANSI.CYAN_BRIGHT);
+            refreshActions();
+            return;
+        }
+
+        Quest ratQuest = player.getQuestById(FarmState.RAT_QUEST_ID);
+        boolean ratQuestActive = ratQuest != null && !ratQuest.isCompleted();
+
+        if (ratQuestActive && RNG.nextInt(100) < 40) {
+            Enemy enemy = Enemy.giantRat();
+            world.addLogEntry("> A " + enemy.getName() + " scurries out of the bushes!", TextColor.ANSI.RED_BRIGHT);
+            manager.transitionTo(new CombatState(manager, enemy, () -> {
+                ratQuest.incrementProgress();
+                WorldPanel w = manager.getWorldPanel();
+                w.addLogEntry("> Quest progress: " + ratQuest.getProgressText() + " Giant Rats slain.",
+                        TextColor.ANSI.CYAN_BRIGHT);
+                if (ratQuest.isCompleted()) {
+                    w.addLogEntry("> Quest complete! Return to the farmer for your reward.",
+                            TextColor.ANSI.YELLOW_BRIGHT);
+                }
+            }));
+            return;
+        }
+
+        if (CombatEngine.shouldEncounter()) {
+            Enemy enemy = CombatEngine.randomEnemy();
+            world.addLogEntry("> A " + enemy.getName() + " appears!", TextColor.ANSI.RED_BRIGHT);
+            manager.transitionTo(new CombatState(manager, enemy));
+        } else {
+            String event = EXPLORE_EVENTS[RNG.nextInt(EXPLORE_EVENTS.length)];
+            world.addLogEntry("> " + event, TextColor.ANSI.WHITE);
+
+            if (RNG.nextInt(100) < 25) {
+                int goldFound = RNG.nextInt(5) + 1;
+                player.setGold(player.getGold() + goldFound);
+                world.addLogEntry("> You found " + goldFound + " gold!", TextColor.ANSI.YELLOW);
+                manager.syncStats();
+            }
+        }
+    }
+
+    private void rest() {
+        Player player = manager.getPlayer();
+        WorldPanel world = manager.getWorldPanel();
+
+        int hpRestore = Math.min(5, player.getMaxHp() - player.getHp());
+        int mpRestore = Math.min(3, player.getMaxMp() - player.getMp());
+        player.setHp(player.getHp() + hpRestore);
+        player.setMp(player.getMp() + mpRestore);
+        manager.syncStats();
+
+        if (hpRestore == 0 && mpRestore == 0) {
+            world.addLogEntry("> You rest but you're already fully restored.", TextColor.ANSI.WHITE);
+        } else {
+            world.addLogEntry("> You rest and recover " + hpRestore + " HP and " + mpRestore + " MP.",
+                    TextColor.ANSI.GREEN);
+        }
+    }
+
+    private void inventory() {
+        manager.getWorldPanel().addLogEntry("> Your bag is empty for now.", TextColor.ANSI.WHITE);
+    }
+}
+
