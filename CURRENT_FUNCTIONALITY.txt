@@ -1,0 +1,184 @@
+RPG APP - CURRENT FUNCTIONALITY SNAPSHOT
+Last updated: 2026-04-03
+
+1) Startup and Rendering
+- App starts from Main.java and initializes Lanterna UI.
+- Terminal size is set to 120x35.
+- Uses Monospaced font size 18 for Swing terminal rendering.
+- Supports optional --swing launch argument to force Swing terminal emulator.
+- Applies theme globally through ThemeManager.
+
+2) Main Menu
+- Title screen: "TERMINAL RPG".
+- Options:
+  - New Game -> opens game screen.
+  - Load Game -> currently not implemented (shows informational dialog).
+  - Settings -> opens settings screen.
+  - Quit -> exits app loop.
+
+3) Settings
+- Theme settings are available.
+- Can switch between:
+  - Dark Mode (default)
+  - Light Mode
+- Theme updates immediately in the UI.
+
+4) Game Screen Layout
+- Full-screen game window with 3 main UI areas:
+  - Stats panel (left)
+  - World panel (center/right)
+  - Actions panel (bottom)
+- New game initializes player as "Hero" with base stats.
+- Game starts in Exploring state.
+
+5) Player System
+- Player stats tracked:
+  - HP/Max HP
+  - MP/Max MP
+  - ATK, DEF, SPD
+  - Gold
+  - Level, XP, XP to next level
+- Starting values:
+  - HP 20, MP 10, ATK 5, DEF 3, SPD 4, Gold 10, Level 1, XP 0/50
+- Level up behavior:
+  - XP threshold scales as 50 * current level.
+  - On level up: HP +5 (fully restored), MP +3 (fully restored), ATK +2, DEF +1, SPD +1.
+
+6) Core State Machine
+- Uses GameStateManager to switch between game states.
+- States currently implemented:
+  - ExploringState
+  - CombatState
+  - PlacesState
+  - VillageState
+  - FarmState
+  - DialogState (implemented, generic dialog flow)
+
+7) Exploring
+- Location set to "Dark Forest".
+- Available actions:
+  - Explore
+  - Rest
+  - Inventory
+  - Places (only after at least one place is discovered)
+  - Quit
+- Explore behavior:
+  - 20% chance to discover a new place (until all are found).
+  - Otherwise:
+    - If rat quest is active: 40% chance to spawn Giant Rat for quest progress.
+    - Else: 60% encounter chance for random enemy combat.
+    - If no combat: random flavor event log entry.
+    - 25% chance to find 1-5 gold on non-combat event.
+- Rest behavior:
+  - Restores up to 5 HP and 3 MP.
+- Inventory behavior:
+  - Placeholder message only (no real inventory yet).
+
+8) Combat
+- Combat actions:
+  - Attack
+  - Special
+  - Defend
+  - Inventory (placeholder)
+  - Run
+- Mechanics:
+  - Attack damage uses ATK/DEF with random variance.
+  - Special attack costs 4 MP and deals higher damage.
+  - Defend reduces next incoming hit, then defending resets.
+  - Run uses flee chance based on player SPD and enemy ATK (clamped 20%-80%).
+- Enemy pool:
+  - Wolf
+  - Goblin
+  - Skeleton
+  - Bandit
+  - Giant Rat (used for farm quest encounters)
+- Combat outcomes:
+  - On enemy defeat: gain gold + XP, possible level up, return to Exploring.
+  - On player defeat: logs GAME OVER and shows "Return to Menu" button.
+
+9) Place Discovery and Travel
+- Place discovery system starts with two undiscovered places:
+  - Village of Briarwood
+  - Old Miller's Farm
+- Places become selectable through the Places state once discovered.
+- Places menu lists discovered destinations and supports Back to Exploring.
+
+10) Village of Briarwood
+- Main options:
+  - Blacksmith
+  - Church
+  - Inn
+  - Leave
+- Blacksmith:
+  - Upgrade ATK by +2.
+  - Cost = 30 * player level.
+- Church:
+  - Full HP/MP heal for 10 gold (if not already full).
+- Inn:
+  - Full HP/MP restore for 15 gold.
+
+11) Old Miller's Farm Quest
+- Farmer offers quest: "Hunt Giant Rats" (kill 5).
+- Quest states supported:
+  - Not accepted -> can accept.
+  - In progress -> shows remaining target count.
+  - Completed not rewarded -> can claim reward.
+  - Completed rewarded -> thank-you dialogue.
+- Reward on claim:
+  - 50 gold
+  - 100 XP
+  - Can trigger level up.
+
+12) Panels and Feedback
+- Stats panel reflects live stat changes.
+- World panel displays:
+  - Current location
+  - Area/combat description
+  - Colored event log entries
+- Actions panel dynamically rebuilds available buttons per state.
+
+13) What Is Not Implemented Yet
+- Save/load system.
+- Functional item inventory and item usage.
+- Additional places beyond village and farm.
+- More quest types/content beyond Giant Rat quest.
+- Explicit game restart flow after defeat (currently return to menu button).
+
+
+QUICK WINS:
+COMBAT FEEL IMPROVEMENTS
+- Add critical hit system
+    - ~10% chance
+    - 1.5x–2x damage
+    - Show "CRITICAL HIT!"
+- Add miss chance
+    - ~5–10% chance
+    - Show "You missed!"
+Add small damage variance
+- Damage = base ± random(1–3)
+COMBAT LOG UPGRADE
+- Replace generic combat text with flavorful descriptions
+    - Example: "You slash the goblin for X damage"
+    - Add 3–5 randomized text variants per action
+    - Add enemy reaction text (e.g. "The goblin snarls!")
+CONSUMABLES (TEMPORARY IMPLEMENTATION)
+- Add basic Health Potion (no full inventory yet)
+    - Start with 3 potions
+    - Add "Use Potion" action in combat
+    - Heal fixed amount (e.g. +10 HP)
+- Show feedback message when used
+EXPLORATION IMPROVEMENTS
+- Replace generic exploration events with flavorful ones
+    - Add ~5–10 unique messages
+- Add small random rewards
+    - +gold, +HP, or nothing
+COMBAT ACTION VARIETY (UNDERTALE STYLE)
+- Add simple behavior per enemy type
+    - Allow influencing of behavior (e.g tell joke to skeleton to lower its guard)
+QUEST VISIBILITY
+- Add "Quests" screen
+    - Display active quests
+    - Name
+    - Progress (e.g. 3/5)
+    - Status
+

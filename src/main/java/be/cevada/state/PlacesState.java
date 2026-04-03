@@ -1,30 +1,30 @@
 package be.cevada.state;
 
 import be.cevada.models.Place;
-import be.cevada.panels.WorldPanel;
+import be.cevada.panels.WorldView;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class PlacesState implements GameState {
 
-    private final GameStateManager manager;
+    private final GameContext manager;
     private final List<Place> places;
 
-    public PlacesState(GameStateManager manager) {
+    public PlacesState(GameContext manager) {
         this.manager = manager;
         this.places = manager.getPlaceManager().getDiscoveredPlaces();
     }
 
     @Override
     public void enter() {
-        WorldPanel world = manager.getWorldPanel();
+        WorldView world = manager.getWorldPanel();
         world.setLocation("Known Places");
         world.clearLog();
 
         if (places.isEmpty()) {
             world.setDescription("You haven't discovered any places yet.\nKeep exploring!");
-            manager.setActions("Back");
+            manager.setActions(GameAction.BACK);
             return;
         }
 
@@ -34,12 +34,12 @@ public class PlacesState implements GameState {
         }
         world.setDescription(sb.toString());
 
-        List<String> actions = new ArrayList<>();
+        List<GameAction> actions = new ArrayList<>();
         for (Place place : places) {
-            actions.add(place.getName());
+            actions.add(placeAction(place));
         }
-        actions.add("Back");
-        manager.setActions(actions.toArray(new String[0]));
+        actions.add(GameAction.BACK);
+        manager.setActions(actions.toArray(new GameAction[0]));
     }
 
     @Override
@@ -47,21 +47,25 @@ public class PlacesState implements GameState {
     }
 
     @Override
-    public void handleAction(String actionLabel) {
-        if ("Back".equals(actionLabel)) {
+    public void handleAction(GameAction action) {
+        if (action == GameAction.BACK) {
             manager.transitionTo(new ExploringState(manager));
             return;
         }
-        for (Place place : places) {
-            if (place.getName().equals(actionLabel)) {
-                switch (place.getId()) {
-                    case "village" -> manager.transitionTo(new VillageState(manager));
-                    case "farm" -> manager.transitionTo(new FarmState(manager));
-                    default -> manager.transitionTo(new ExploringState(manager));
-                }
-                return;
+        switch (action) {
+            case PLACE_VILLAGE -> manager.transitionTo(new VillageState(manager));
+            case PLACE_FARM -> manager.transitionTo(new FarmState(manager));
+            default -> {
             }
         }
+    }
+
+    private GameAction placeAction(Place place) {
+        return switch (place.getId()) {
+            case "village" -> GameAction.PLACE_VILLAGE;
+            case "farm" -> GameAction.PLACE_FARM;
+            default -> throw new IllegalArgumentException("Unsupported place id: " + place.getId());
+        };
     }
 }
 

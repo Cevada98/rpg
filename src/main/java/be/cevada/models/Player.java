@@ -1,7 +1,5 @@
 package be.cevada.models;
 
-import be.cevada.panels.StatsPanel;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,17 +54,6 @@ public class Player {
         return false;
     }
 
-    public void syncToPanel(StatsPanel panel) {
-        panel.setName(name);
-        panel.setHp(hp, maxHp);
-        panel.setMp(mp, maxMp);
-        panel.setAtk(atk);
-        panel.setDef(def);
-        panel.setSpd(spd);
-        panel.setGold(gold);
-        panel.setLevel(level);
-        panel.setXp(xp, xpToNext);
-    }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

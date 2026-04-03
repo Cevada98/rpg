@@ -1,17 +1,20 @@
 package be.cevada.state;
 
 import be.cevada.models.Player;
-import be.cevada.panels.WorldPanel;
+import be.cevada.panels.WorldView;
+import be.cevada.state.services.VillageService;
 import com.googlecode.lanterna.TextColor;
 
 public class VillageState implements GameState {
 
-    private final GameStateManager manager;
+    private final GameContext manager;
     private String subMenu;
+    private final VillageService villageService;
 
-    public VillageState(GameStateManager manager) {
+    public VillageState(GameContext manager) {
         this.manager = manager;
         this.subMenu = "main";
+        this.villageService = new VillageService();
     }
 
     @Override
@@ -24,143 +27,145 @@ public class VillageState implements GameState {
     }
 
     @Override
-    public void handleAction(String actionLabel) {
+    public void handleAction(GameAction action) {
         switch (subMenu) {
-            case "main" -> handleMain(actionLabel);
-            case "blacksmith" -> handleBlacksmith(actionLabel);
-            case "church" -> handleChurch(actionLabel);
-            case "inn" -> handleInn(actionLabel);
+            case "main" -> handleMain(action);
+            case "blacksmith" -> handleBlacksmith(action);
+            case "church" -> handleChurch(action);
+            case "inn" -> handleInn(action);
         }
     }
 
     private void showMainMenu() {
         subMenu = "main";
-        WorldPanel world = manager.getWorldPanel();
+        WorldView world = manager.getWorldPanel();
         world.setLocation("Village of Briarwood");
         world.setDescription("A small village with cobblestone streets.\nSmoke rises from the chimneys.");
         world.clearLog();
         world.addLogEntry("> You arrive at the village.", TextColor.ANSI.WHITE);
-        manager.setActions("Blacksmith", "Church", "Inn", "Leave");
+        manager.setActions(GameAction.BLACKSMITH, GameAction.CHURCH, GameAction.INN, GameAction.LEAVE);
     }
 
-    private void handleMain(String actionLabel) {
-        switch (actionLabel) {
-            case "Blacksmith" -> showBlacksmith();
-            case "Church" -> showChurch();
-            case "Inn" -> showInn();
-            case "Leave" -> manager.transitionTo(new ExploringState(manager));
+    private void handleMain(GameAction action) {
+        switch (action) {
+            case BLACKSMITH -> showBlacksmith();
+            case CHURCH -> showChurch();
+            case INN -> showInn();
+            case LEAVE -> manager.transitionTo(new ExploringState(manager));
+            default -> {
+            }
         }
     }
 
     private void showBlacksmith() {
         subMenu = "blacksmith";
-        WorldPanel world = manager.getWorldPanel();
+        WorldView world = manager.getWorldPanel();
         Player player = manager.getPlayer();
-        int cost = 30 * player.getLevel();
+        int cost = villageService.blacksmithUpgradeCost(player.getLevel());
 
         world.setLocation("Blacksmith");
         world.setDescription("The Blacksmith hammers away at his anvil.\n\n\"Want me to sharpen yer blade?\"\nCost: " + cost + " gold  (ATK +2)");
         world.clearLog();
 
-        if (player.getGold() >= cost) {
-            manager.setActions("Upgrade", "Back");
+        if (villageService.canAfford(player.getGold(), cost)) {
+            manager.setActions(GameAction.UPGRADE, GameAction.BACK);
         } else {
             world.addLogEntry("> You don't have enough gold.", TextColor.ANSI.YELLOW);
-            manager.setActions("Back");
+            manager.setActions(GameAction.BACK);
         }
     }
 
-    private void handleBlacksmith(String actionLabel) {
-        if ("Upgrade".equals(actionLabel)) {
+    private void handleBlacksmith(GameAction action) {
+        if (action == GameAction.UPGRADE) {
             Player player = manager.getPlayer();
-            WorldPanel world = manager.getWorldPanel();
-            int cost = 30 * player.getLevel();
+            WorldView world = manager.getWorldPanel();
+            int cost = villageService.blacksmithUpgradeCost(player.getLevel());
 
-            if (player.getGold() >= cost) {
+            if (villageService.canAfford(player.getGold(), cost)) {
                 player.setGold(player.getGold() - cost);
                 player.boostAtk(2);
                 manager.syncStats();
                 world.addLogEntry("> The Blacksmith sharpens your weapon! ATK +2.", TextColor.ANSI.GREEN_BRIGHT);
                 showBlacksmith();
             }
-        } else if ("Back".equals(actionLabel)) {
+        } else if (action == GameAction.BACK) {
             showMainMenu();
         }
     }
 
     private void showChurch() {
         subMenu = "church";
-        WorldPanel world = manager.getWorldPanel();
+        WorldView world = manager.getWorldPanel();
         Player player = manager.getPlayer();
 
         world.setLocation("Church");
         world.clearLog();
 
         if (player.getHp() < player.getMaxHp() || player.getMp() < player.getMaxMp()) {
-            world.setDescription("A serene church with stained glass windows.\n\nThe priest offers healing.\nCost: 10 gold");
-            if (player.getGold() >= 10) {
-                manager.setActions("Heal", "Back");
+            world.setDescription("A serene church with stained glass windows.\n\nThe priest offers healing.\nCost: " + VillageService.CHURCH_HEAL_COST + " gold");
+            if (villageService.canAfford(player.getGold(), VillageService.CHURCH_HEAL_COST)) {
+                manager.setActions(GameAction.HEAL, GameAction.BACK);
             } else {
                 world.addLogEntry("> You don't have enough gold.", TextColor.ANSI.YELLOW);
-                manager.setActions("Back");
+                manager.setActions(GameAction.BACK);
             }
         } else {
             world.setDescription("A serene church with stained glass windows.\n\nThe priest smiles warmly.\n\"You look well, traveler.\"");
             world.addLogEntry("> You are already fully healed.", TextColor.ANSI.WHITE);
-            manager.setActions("Back");
+            manager.setActions(GameAction.BACK);
         }
     }
 
-    private void handleChurch(String actionLabel) {
-        if ("Heal".equals(actionLabel)) {
+    private void handleChurch(GameAction action) {
+        if (action == GameAction.HEAL) {
             Player player = manager.getPlayer();
-            WorldPanel world = manager.getWorldPanel();
+            WorldView world = manager.getWorldPanel();
 
-            if (player.getGold() >= 10) {
-                player.setGold(player.getGold() - 10);
+            if (villageService.canAfford(player.getGold(), VillageService.CHURCH_HEAL_COST)) {
+                player.setGold(player.getGold() - VillageService.CHURCH_HEAL_COST);
                 player.setHp(player.getMaxHp());
                 player.setMp(player.getMaxMp());
                 manager.syncStats();
                 world.addLogEntry("> The priest heals you fully!", TextColor.ANSI.GREEN_BRIGHT);
                 showChurch();
             }
-        } else if ("Back".equals(actionLabel)) {
+        } else if (action == GameAction.BACK) {
             showMainMenu();
         }
     }
 
     private void showInn() {
         subMenu = "inn";
-        WorldPanel world = manager.getWorldPanel();
+        WorldView world = manager.getWorldPanel();
         Player player = manager.getPlayer();
-        int cost = 15;
+        int cost = VillageService.INN_REST_COST;
 
         world.setLocation("Inn");
         world.setDescription("A cozy inn with a crackling fireplace.\n\n\"Rest for the night?\"\nCost: " + cost + " gold  (Full restore)");
         world.clearLog();
 
-        if (player.getGold() >= cost) {
-            manager.setActions("Rest", "Back");
+        if (villageService.canAfford(player.getGold(), cost)) {
+            manager.setActions(GameAction.REST, GameAction.BACK);
         } else {
             world.addLogEntry("> You don't have enough gold.", TextColor.ANSI.YELLOW);
-            manager.setActions("Back");
+            manager.setActions(GameAction.BACK);
         }
     }
 
-    private void handleInn(String actionLabel) {
-        if ("Rest".equals(actionLabel)) {
+    private void handleInn(GameAction action) {
+        if (action == GameAction.REST) {
             Player player = manager.getPlayer();
-            WorldPanel world = manager.getWorldPanel();
+            WorldView world = manager.getWorldPanel();
 
-            if (player.getGold() >= 15) {
-                player.setGold(player.getGold() - 15);
+            if (villageService.canAfford(player.getGold(), VillageService.INN_REST_COST)) {
+                player.setGold(player.getGold() - VillageService.INN_REST_COST);
                 player.setHp(player.getMaxHp());
                 player.setMp(player.getMaxMp());
                 manager.syncStats();
                 world.addLogEntry("> You sleep at the inn and wake up fully restored!", TextColor.ANSI.GREEN_BRIGHT);
                 showInn();
             }
-        } else if ("Back".equals(actionLabel)) {
+        } else if (action == GameAction.BACK) {
             showMainMenu();
         }
     }

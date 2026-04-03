@@ -4,6 +4,7 @@ import be.cevada.models.Player;
 import be.cevada.panels.ActionsPanel;
 import be.cevada.panels.StatsPanel;
 import be.cevada.panels.WorldPanel;
+import be.cevada.presenters.PlayerStatsPresenter;
 import be.cevada.state.ExploringState;
 import be.cevada.state.GameStateManager;
 import com.googlecode.lanterna.gui2.*;
@@ -29,7 +30,7 @@ public class GameScreen extends AbstractScreen {
         Player player = new Player("Hero");
 
         stateManager = new GameStateManager(player, statsPanel, worldPanel, actionsPanel, this::close);
-        player.syncToPanel(statsPanel);
+        PlayerStatsPresenter.sync(player, statsPanel);
         stateManager.transitionTo(new ExploringState(stateManager));
 
         Panel topArea = new Panel();

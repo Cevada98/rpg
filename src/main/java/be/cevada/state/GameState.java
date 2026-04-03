@@ -6,6 +6,6 @@ public interface GameState {
 
     void exit();
 
-    void handleAction(String actionLabel);
+    void handleAction(GameAction action);
 }
 

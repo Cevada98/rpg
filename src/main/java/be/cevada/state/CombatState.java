@@ -3,20 +3,20 @@ package be.cevada.state;
 import be.cevada.combat.CombatEngine;
 import be.cevada.models.Enemy;
 import be.cevada.models.Player;
-import be.cevada.panels.WorldPanel;
+import be.cevada.panels.WorldView;
 import com.googlecode.lanterna.TextColor;
 
 public class CombatState implements GameState {
 
-    private final GameStateManager manager;
+    private final GameContext manager;
     private final Enemy enemy;
     private final Runnable onDefeat;
 
-    public CombatState(GameStateManager manager, Enemy enemy) {
+    public CombatState(GameContext manager, Enemy enemy) {
         this(manager, enemy, null);
     }
 
-    public CombatState(GameStateManager manager, Enemy enemy, Runnable onDefeat) {
+    public CombatState(GameContext manager, Enemy enemy, Runnable onDefeat) {
         this.manager = manager;
         this.enemy = enemy;
         this.onDefeat = onDefeat;
@@ -24,10 +24,10 @@ public class CombatState implements GameState {
 
     @Override
     public void enter() {
-        WorldPanel world = manager.getWorldPanel();
+        WorldView world = manager.getWorldPanel();
         world.setLocation("Combat - " + enemy.getName());
         updateEnemyDescription();
-        manager.setActions("Attack", "Special", "Defend", "Inventory", "Run");
+        manager.setActions(GameAction.ATTACK, GameAction.SPECIAL, GameAction.DEFEND, GameAction.INVENTORY, GameAction.RUN);
     }
 
     @Override
@@ -36,18 +36,20 @@ public class CombatState implements GameState {
     }
 
     @Override
-    public void handleAction(String actionLabel) {
-        switch (actionLabel) {
-            case "Attack" -> doAttack();
-            case "Special" -> doSpecial();
-            case "Defend" -> doDefend();
-            case "Inventory" -> doInventory();
-            case "Run" -> doRun();
+    public void handleAction(GameAction action) {
+        switch (action) {
+            case ATTACK -> doAttack();
+            case SPECIAL -> doSpecial();
+            case DEFEND -> doDefend();
+            case INVENTORY -> doInventory();
+            case RUN -> doRun();
+            default -> {
+            }
         }
     }
 
     private void doAttack() {
-        WorldPanel world = manager.getWorldPanel();
+        WorldView world = manager.getWorldPanel();
         Player player = manager.getPlayer();
 
         int damage = CombatEngine.playerAttack(player, enemy);
@@ -60,7 +62,7 @@ public class CombatState implements GameState {
     }
 
     private void doSpecial() {
-        WorldPanel world = manager.getWorldPanel();
+        WorldView world = manager.getWorldPanel();
         Player player = manager.getPlayer();
 
         if (player.getMp() < 4) {
@@ -79,7 +81,7 @@ public class CombatState implements GameState {
     }
 
     private void doDefend() {
-        WorldPanel world = manager.getWorldPanel();
+        WorldView world = manager.getWorldPanel();
         Player player = manager.getPlayer();
 
         player.setDefending(true);
@@ -94,7 +96,7 @@ public class CombatState implements GameState {
     }
 
     private void doRun() {
-        WorldPanel world = manager.getWorldPanel();
+        WorldView world = manager.getWorldPanel();
         Player player = manager.getPlayer();
 
         if (CombatEngine.tryFlee(player.getSpd(), enemy.getAtk())) {
@@ -109,7 +111,7 @@ public class CombatState implements GameState {
 
     private void enemyTurn() {
         Player player = manager.getPlayer();
-        WorldPanel world = manager.getWorldPanel();
+        WorldView world = manager.getWorldPanel();
 
         int damage = CombatEngine.enemyAttack(enemy, player);
         if (player.isDefending()) {
@@ -125,7 +127,7 @@ public class CombatState implements GameState {
 
     private boolean checkEnemyDead() {
         if (!enemy.isAlive()) {
-            WorldPanel world = manager.getWorldPanel();
+            WorldView world = manager.getWorldPanel();
             Player player = manager.getPlayer();
 
             world.addLogEntry("> The " + enemy.getName() + " has been defeated!", TextColor.ANSI.GREEN_BRIGHT);
@@ -154,12 +156,12 @@ public class CombatState implements GameState {
 
     private boolean checkPlayerDead() {
         if (!manager.getPlayer().isAlive()) {
-            WorldPanel world = manager.getWorldPanel();
+            WorldView world = manager.getWorldPanel();
             world.addLogEntry("> You have been slain by the " + enemy.getName() + "...",
                     TextColor.ANSI.RED_BRIGHT);
             world.addLogEntry("> GAME OVER", TextColor.ANSI.RED_BRIGHT);
             manager.getActionsPanel().clearActions();
-            manager.getActionsPanel().addButton("Return to Menu", manager.getOnQuit());
+            manager.getActionsPanel().addButton(GameAction.RETURN_TO_MENU.label(), manager.getOnQuit());
             return true;
         }
         return false;

@@ -7,7 +7,9 @@ import com.googlecode.lanterna.gui2.DefaultWindowManager;
 import com.googlecode.lanterna.gui2.EmptySpace;
 import com.googlecode.lanterna.gui2.MultiWindowTextGUI;
 import com.googlecode.lanterna.screen.Screen;
+import com.googlecode.lanterna.screen.TerminalScreen;
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory;
+import com.googlecode.lanterna.terminal.Terminal;
 import com.googlecode.lanterna.terminal.swing.SwingTerminalFontConfiguration;
 
 import java.awt.Font;
@@ -16,14 +18,18 @@ import java.io.IOException;
 
 public class Main {
 
-    static void main() {
-        try {
-            Screen screen = createScreen();
+    public static void main(String[] args) {
+        boolean forceSwing = false;
+        for (String arg : args) {
+            if (arg.equalsIgnoreCase("--swing")) {
+                forceSwing = true;
+            }
+        }
 
-            screen.startScreen();
+        try {
+            Screen screen = createScreen(forceSwing);
 
             ThemeManager themeManager = new ThemeManager();
-
             MultiWindowTextGUI gui = new MultiWindowTextGUI(screen,
                     new DefaultWindowManager(),
                     new EmptySpace());
@@ -50,18 +56,25 @@ public class Main {
         }
     }
 
-    private static Screen createScreen() throws IOException {
-        Font terminalFont = new Font("Cascadia Mono", Font.PLAIN, 18);
-        if (!terminalFont.getFamily().equals("Cascadia Mono")) {
-            terminalFont = new Font("Consolas", Font.PLAIN, 18);
-        }
-
+    private static Screen createScreen(boolean forceSwing) throws IOException {
+        Font terminalFont = new Font("Monospaced", Font.PLAIN, 18);
         SwingTerminalFontConfiguration fontConfig =
                 SwingTerminalFontConfiguration.newInstance(terminalFont);
 
-        return new DefaultTerminalFactory()
+        DefaultTerminalFactory factory = new DefaultTerminalFactory()
                 .setInitialTerminalSize(new TerminalSize(120, 35))
-                .setTerminalEmulatorFontConfiguration(fontConfig)
-                .createScreen();
+                .setTerminalEmulatorFontConfiguration(fontConfig);
+
+        Terminal terminal;
+
+        if (forceSwing) {
+            terminal = factory.createTerminalEmulator();
+        } else {
+            terminal = factory.createTerminal();
+        }
+
+        Screen screen = new TerminalScreen(terminal);
+        screen.startScreen();
+        return screen;
     }
 }

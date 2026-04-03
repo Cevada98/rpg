@@ -5,7 +5,7 @@ import com.googlecode.lanterna.gui2.*;
 import com.googlecode.lanterna.gui2.BorderLayout;
 import com.googlecode.lanterna.gui2.LinearLayout;
 
-public class ActionsPanel {
+public class ActionsPanel implements ActionView {
 
     private final Panel panel;
     private final Panel actionsContent;

@@ -6,7 +6,7 @@ import com.googlecode.lanterna.gui2.*;
 import com.googlecode.lanterna.gui2.BorderLayout;
 import com.googlecode.lanterna.gui2.LinearLayout;
 
-public class StatsPanel {
+public class StatsPanel implements StatsView {
 
     private final Panel panel;
 

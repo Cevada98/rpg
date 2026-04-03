@@ -9,7 +9,7 @@ import com.googlecode.lanterna.gui2.LinearLayout;
 /**
  * Center/right panel showing location, description, and event log.
  */
-public class WorldPanel {
+public class WorldPanel implements WorldView {
 
     private final Panel panel;
 
