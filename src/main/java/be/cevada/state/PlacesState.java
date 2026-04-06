@@ -8,10 +8,10 @@ import java.util.List;
 
 public class PlacesState implements GameState {
 
-    private final GameContext manager;
+    private final PlacesDeps manager;
     private final List<Place> places;
 
-    public PlacesState(GameContext manager) {
+    public PlacesState(PlacesDeps manager) {
         this.manager = manager;
         this.places = manager.getPlaceManager().getDiscoveredPlaces();
     }
@@ -49,12 +49,12 @@ public class PlacesState implements GameState {
     @Override
     public void handleAction(GameAction action) {
         if (action == GameAction.BACK) {
-            manager.transitionTo(new ExploringState(manager));
+            manager.transitionTo(manager.newExploringState());
             return;
         }
         switch (action) {
-            case PLACE_VILLAGE -> manager.transitionTo(new VillageState(manager));
-            case PLACE_FARM -> manager.transitionTo(new FarmState(manager));
+            case PLACE_VILLAGE -> manager.transitionTo(manager.newVillageState());
+            case PLACE_FARM -> manager.transitionTo(manager.newFarmState());
             default -> {
             }
         }

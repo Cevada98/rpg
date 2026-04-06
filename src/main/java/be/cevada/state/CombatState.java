@@ -1,25 +1,38 @@
 package be.cevada.state;
 
-import be.cevada.combat.CombatEngine;
+import be.cevada.combat.CombatEngine.CombatResult;
 import be.cevada.models.Enemy;
+import be.cevada.models.Enemy.BehaviorType;
 import be.cevada.models.Player;
 import be.cevada.panels.WorldView;
+import be.cevada.state.services.CombatLogFormatter;
+import be.cevada.state.services.CombatLogFormatter.LogLine;
+import be.cevada.state.services.CombatResolver;
+import be.cevada.state.services.CombatResolver.ActOutcome;
+import be.cevada.state.services.CombatResolver.AttackOutcome;
 import com.googlecode.lanterna.TextColor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class CombatState implements GameState {
 
-    private final GameContext manager;
+    private final CombatDeps manager;
     private final Enemy enemy;
     private final Runnable onDefeat;
+    private final CombatResolver resolver;
+    private final CombatLogFormatter logFormatter;
 
-    public CombatState(GameContext manager, Enemy enemy) {
+    public CombatState(CombatDeps manager, Enemy enemy) {
         this(manager, enemy, null);
     }
 
-    public CombatState(GameContext manager, Enemy enemy, Runnable onDefeat) {
+    public CombatState(CombatDeps manager, Enemy enemy, Runnable onDefeat) {
         this.manager = manager;
         this.enemy = enemy;
         this.onDefeat = onDefeat;
+        this.resolver = new CombatResolver();
+        this.logFormatter = new CombatLogFormatter();
     }
 
     @Override
@@ -27,7 +40,7 @@ public class CombatState implements GameState {
         WorldView world = manager.getWorldPanel();
         world.setLocation("Combat - " + enemy.getName());
         updateEnemyDescription();
-        manager.setActions(GameAction.ATTACK, GameAction.SPECIAL, GameAction.DEFEND, GameAction.INVENTORY, GameAction.RUN);
+        refreshCombatActions();
     }
 
     @Override
@@ -41,20 +54,19 @@ public class CombatState implements GameState {
             case ATTACK -> doAttack();
             case SPECIAL -> doSpecial();
             case DEFEND -> doDefend();
+            case USE_POTION -> doPotion();
             case INVENTORY -> doInventory();
             case RUN -> doRun();
+            case ACT -> doInteraction();
             default -> {
             }
         }
     }
 
     private void doAttack() {
-        WorldView world = manager.getWorldPanel();
         Player player = manager.getPlayer();
-
-        int damage = CombatEngine.playerAttack(player, enemy);
-        world.addLogEntry("> You attack the " + enemy.getName() + " for " + damage + " damage!",
-                TextColor.ANSI.YELLOW);
+        AttackOutcome outcome = resolver.playerAttack(player, enemy);
+        applyLogs(logFormatter.playerAttack(enemy, outcome));
 
         if (checkEnemyDead()) return;
         enemyTurn();
@@ -62,17 +74,15 @@ public class CombatState implements GameState {
     }
 
     private void doSpecial() {
-        WorldView world = manager.getWorldPanel();
         Player player = manager.getPlayer();
 
         if (player.getMp() < 4) {
-            world.addLogEntry("> Not enough MP!", TextColor.ANSI.BLUE_BRIGHT);
+            applyLog(logFormatter.notEnoughMp());
             return;
         }
 
-        int damage = CombatEngine.playerSpecial(player, enemy);
-        world.addLogEntry("> You unleash a special attack for " + damage + " damage! (-4 MP)",
-                TextColor.ANSI.CYAN_BRIGHT);
+        CombatResult result = resolver.playerSpecial(player, enemy);
+        applyLogs(logFormatter.playerSpecial(enemy, result));
         manager.syncStats();
 
         if (checkEnemyDead()) return;
@@ -81,46 +91,60 @@ public class CombatState implements GameState {
     }
 
     private void doDefend() {
-        WorldView world = manager.getWorldPanel();
         Player player = manager.getPlayer();
-
         player.setDefending(true);
-        world.addLogEntry("> You brace yourself for the next attack.", TextColor.ANSI.WHITE_BRIGHT);
+        applyLog(logFormatter.braceForAttack());
 
         enemyTurn();
         checkPlayerDead();
     }
 
+    private void doPotion() {
+        Player player = manager.getPlayer();
+
+        if (player.usePotion()) {
+            applyLog(logFormatter.potionUsed(player.getPotions()));
+            manager.syncStats();
+            refreshCombatActions();
+            enemyTurn();
+            checkPlayerDead();
+        } else {
+            applyLog(logFormatter.noPotions());
+        }
+    }
+
     private void doInventory() {
-        manager.getWorldPanel().addLogEntry("> No items to use.", TextColor.ANSI.WHITE);
+        applyLog(logFormatter.inventoryPotions(manager.getPlayer().getPotions()));
     }
 
     private void doRun() {
-        WorldView world = manager.getWorldPanel();
         Player player = manager.getPlayer();
 
-        if (CombatEngine.tryFlee(player.getSpd(), enemy.getAtk())) {
-            world.addLogEntry("> You fled from the " + enemy.getName() + "!", TextColor.ANSI.GREEN);
-            manager.transitionTo(new ExploringState(manager));
+        if (resolver.tryFlee(player, enemy)) {
+            applyLog(logFormatter.fleeSuccess(enemy));
+            manager.transitionTo(manager.newExploringState());
         } else {
-            world.addLogEntry("> You failed to escape!", TextColor.ANSI.RED_BRIGHT);
+            applyLog(logFormatter.fleeFail());
             enemyTurn();
             checkPlayerDead();
         }
     }
 
+    private void doInteraction() {
+        ActOutcome outcome = resolver.act(enemy);
+        applyLogs(logFormatter.act(enemy, outcome));
+
+        enemyTurn();
+        checkPlayerDead();
+    }
+
     private void enemyTurn() {
         Player player = manager.getPlayer();
-        WorldView world = manager.getWorldPanel();
 
-        int damage = CombatEngine.enemyAttack(enemy, player);
-        if (player.isDefending()) {
-            world.addLogEntry("> The " + enemy.getName() + " attacks but you block some! " + damage + " damage.",
-                    TextColor.ANSI.RED);
-        } else {
-            world.addLogEntry("> The " + enemy.getName() + " attacks you for " + damage + " damage!",
-                    TextColor.ANSI.RED);
-        }
+        boolean wasDefending = player.isDefending();
+        CombatResult result = resolver.enemyAttack(enemy, player);
+        applyLogs(logFormatter.enemyTurn(enemy, result, wasDefending));
+
         manager.syncStats();
         updateEnemyDescription();
     }
@@ -131,7 +155,6 @@ public class CombatState implements GameState {
             Player player = manager.getPlayer();
 
             world.addLogEntry("> The " + enemy.getName() + " has been defeated!", TextColor.ANSI.GREEN_BRIGHT);
-
             player.setGold(player.getGold() + enemy.getGoldReward());
             world.addLogEntry("> You gained " + enemy.getGoldReward() + " gold.", TextColor.ANSI.YELLOW);
 
@@ -148,7 +171,7 @@ public class CombatState implements GameState {
             }
 
             manager.syncStats();
-            manager.transitionTo(new ExploringState(manager));
+            manager.transitionTo(manager.newExploringState());
             return true;
         }
         return false;
@@ -167,12 +190,42 @@ public class CombatState implements GameState {
         return false;
     }
 
+    private void refreshCombatActions() {
+        Player player = manager.getPlayer();
+        BehaviorType type = enemy.getBehaviorType();
+
+        List<GameAction> actions = new ArrayList<>();
+        actions.add(GameAction.ATTACK);
+        actions.add(GameAction.SPECIAL);
+        actions.add(GameAction.DEFEND);
+
+        if (type != BehaviorType.VERMIN) {
+            actions.add(GameAction.ACT);
+        }
+
+        if (player.getPotions() > 0) {
+            actions.add(GameAction.USE_POTION);
+        }
+        actions.add(GameAction.RUN);
+
+        manager.setActions(actions.toArray(new GameAction[0]));
+    }
+
     private void updateEnemyDescription() {
+        String weakenedNote = enemy.isWeakened() ? "  [GUARD DOWN]" : "";
         manager.getWorldPanel().setDescription(
                 enemy.getName() + "  HP: " + enemy.getHp() + " / " + enemy.getMaxHp() +
-                "\nATK: " + enemy.getAtk() + "  DEF: " + enemy.getDef()
+                "\nATK: " + enemy.getAtk() + "  DEF: " + enemy.getDef() + weakenedNote
         );
     }
+
+    private void applyLog(LogLine line) {
+        manager.getWorldPanel().addLogEntry(line.text(), line.color());
+    }
+
+    private void applyLogs(List<LogLine> lines) {
+        for (LogLine line : lines) {
+            applyLog(line);
+        }
+    }
 }
-
-

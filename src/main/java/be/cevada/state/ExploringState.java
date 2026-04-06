@@ -1,6 +1,8 @@
 package be.cevada.state;
 
 import be.cevada.combat.CombatEngine;
+import be.cevada.data.EnemyRegistry;
+import be.cevada.data.GameRandom;
 import be.cevada.models.Enemy;
 import be.cevada.models.Place;
 import be.cevada.models.Player;
@@ -11,12 +13,10 @@ import com.googlecode.lanterna.TextColor;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 public class ExploringState implements GameState {
 
-    private final GameContext manager;
-    private static final Random RNG = new Random();
+    private final ExploringDeps manager;
     private final ExplorationService explorationService;
 
     private static final String[] EXPLORE_EVENTS = {
@@ -25,13 +25,21 @@ public class ExploringState implements GameState {
             "A cold wind blows through the forest.",
             "You discover old footprints in the mud.",
             "The trees seem to close in around you.",
-            "You stumble upon a clearing.",
-            "A strange fog rolls in.",
+            "You stumble upon a clearing bathed in pale moonlight.",
+            "A strange fog rolls in from the valley.",
+            "You notice strange runes carved into an ancient oak.",
+            "A crow watches you silently from a branch above.",
+            "You find the remains of an old campfire, still warm.",
+            "A distant bell tolls somewhere deep in the forest.",
+            "You spot the glint of something shiny buried under leaves.",
+            "The wind carries the scent of smoke from far away.",
+            "An eerie silence falls — even the insects go quiet.",
+            "You pass a mossy stone that looks like a crouching figure.",
     };
 
-    public ExploringState(GameContext manager) {
+    public ExploringState(ExploringDeps manager) {
         this.manager = manager;
-        this.explorationService = new ExplorationService(RNG);
+        this.explorationService = new ExplorationService(GameRandom.get());
     }
 
     @Override
@@ -55,7 +63,8 @@ public class ExploringState implements GameState {
             case EXPLORE -> explore();
             case REST -> rest();
             case INVENTORY -> inventory();
-            case PLACES -> manager.transitionTo(new PlacesState(manager));
+            case PLACES -> manager.transitionTo(manager.newPlacesState());
+            case QUESTS -> manager.transitionTo(manager.newQuestState());
             case QUIT -> manager.getOnQuit().run();
             default -> {
             }
@@ -63,24 +72,18 @@ public class ExploringState implements GameState {
     }
 
     private void refreshActions() {
-        List<String> actions = new ArrayList<>();
-        actions.add(GameAction.EXPLORE.label());
-        actions.add(GameAction.REST.label());
-        actions.add(GameAction.INVENTORY.label());
+        List<GameAction> actions = new ArrayList<>();
+        actions.add(GameAction.EXPLORE);
+        actions.add(GameAction.REST);
+        actions.add(GameAction.INVENTORY);
         if (manager.getPlaceManager().hasDiscoveredPlaces()) {
-            actions.add(GameAction.PLACES.label());
+            actions.add(GameAction.PLACES);
         }
-        actions.add(GameAction.QUIT.label());
-        manager.setActions(actions.stream().map(this::toAction).toArray(GameAction[]::new));
-    }
-
-    private GameAction toAction(String label) {
-        for (GameAction action : GameAction.values()) {
-            if (action.label().equals(label)) {
-                return action;
-            }
+        if (!manager.getPlayer().getQuests().isEmpty()) {
+            actions.add(GameAction.QUESTS);
         }
-        throw new IllegalArgumentException("Unsupported action label: " + label);
+        actions.add(GameAction.QUIT);
+        manager.setActions(actions.toArray(new GameAction[0]));
     }
 
     private void explore() {
@@ -99,9 +102,9 @@ public class ExploringState implements GameState {
         boolean ratQuestActive = ratQuest != null && !ratQuest.isCompleted();
 
         if (ratQuestActive && explorationService.shouldSpawnQuestRat()) {
-            Enemy enemy = Enemy.giantRat();
+            Enemy enemy = EnemyRegistry.giantRat();
             world.addLogEntry("> A " + enemy.getName() + " scurries out of the bushes!", TextColor.ANSI.RED_BRIGHT);
-            manager.transitionTo(new CombatState(manager, enemy, () -> {
+            manager.transitionTo(manager.newCombatState(enemy, () -> {
                 ratQuest.incrementProgress();
                 WorldView w = manager.getWorldPanel();
                 w.addLogEntry("> Quest progress: " + ratQuest.getProgressText() + " Giant Rats slain.",
@@ -117,7 +120,7 @@ public class ExploringState implements GameState {
         if (CombatEngine.shouldEncounter()) {
             Enemy enemy = CombatEngine.randomEnemy();
             world.addLogEntry("> A " + enemy.getName() + " appears!", TextColor.ANSI.RED_BRIGHT);
-            manager.transitionTo(new CombatState(manager, enemy));
+            manager.transitionTo(manager.newCombatState(enemy));
         } else {
             String event = explorationService.randomExploreEvent(EXPLORE_EVENTS);
             world.addLogEntry("> " + event, TextColor.ANSI.WHITE);

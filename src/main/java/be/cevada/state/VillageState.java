@@ -7,11 +7,11 @@ import com.googlecode.lanterna.TextColor;
 
 public class VillageState implements GameState {
 
-    private final GameContext manager;
+    private final VillageDeps manager;
     private String subMenu;
     private final VillageService villageService;
 
-    public VillageState(GameContext manager) {
+    public VillageState(VillageDeps manager) {
         this.manager = manager;
         this.subMenu = "main";
         this.villageService = new VillageService();
@@ -51,7 +51,7 @@ public class VillageState implements GameState {
             case BLACKSMITH -> showBlacksmith();
             case CHURCH -> showChurch();
             case INN -> showInn();
-            case LEAVE -> manager.transitionTo(new ExploringState(manager));
+            case LEAVE -> manager.transitionTo(manager.newExploringState());
             default -> {
             }
         }

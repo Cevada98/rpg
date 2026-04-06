@@ -18,6 +18,6 @@ public final class PlayerStatsPresenter {
         view.setGold(player.getGold());
         view.setLevel(player.getLevel());
         view.setXp(player.getXp(), player.getXpToNext());
+        view.setPotions(player.getPotions());
     }
 }
-

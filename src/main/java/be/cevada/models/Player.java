@@ -18,6 +18,7 @@ public class Player {
     private int xp;
     private int xpToNext;
     private boolean defending;
+    private int potions;
     private final List<Quest> quests = new ArrayList<>();
 
     public Player(String name) {
@@ -34,6 +35,7 @@ public class Player {
         this.xp = 0;
         this.xpToNext = 50;
         this.defending = false;
+        this.potions = 3;
     }
 
     public boolean addXp(int amount) {
@@ -87,5 +89,14 @@ public class Player {
     public boolean hasQuest(String id) {
         return quests.stream().anyMatch(q -> q.getId().equals(id));
     }
-}
 
+    public int getPotions() { return potions; }
+    public void setPotions(int potions) { this.potions = potions; }
+
+    public boolean usePotion() {
+        if (potions <= 0) return false;
+        potions--;
+        setHp(hp + 10);
+        return true;
+    }
+}

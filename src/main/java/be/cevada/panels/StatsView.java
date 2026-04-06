@@ -18,5 +18,6 @@ public interface StatsView {
     void setLevel(int value);
 
     void setXp(int current, int max);
-}
 
+    void setPotions(int value);
+}

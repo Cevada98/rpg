@@ -9,6 +9,7 @@ public class ActionsPanel implements ActionView {
 
     private final Panel panel;
     private final Panel actionsContent;
+    private Button firstButton;
 
     public ActionsPanel() {
         actionsContent = new Panel();
@@ -26,16 +27,30 @@ public class ActionsPanel implements ActionView {
         return panel;
     }
 
+    @Override
     public void clearActions() {
         actionsContent.removeAllComponents();
+        firstButton = null;
     }
 
+    @Override
     public void addButton(String label, Runnable action) {
         if (actionsContent.getChildCount() > 0) {
             actionsContent.addComponent(new EmptySpace(new TerminalSize(2, 1)));
         } else {
             actionsContent.addComponent(new EmptySpace(new TerminalSize(1, 1)));
         }
-        actionsContent.addComponent(new Button(label, action));
+        Button btn = new Button(label, action);
+        if (firstButton == null) {
+            firstButton = btn;
+        }
+        actionsContent.addComponent(btn);
+    }
+
+    @Override
+    public void focusFirst() {
+        if (firstButton != null) {
+            firstButton.takeFocus();
+        }
     }
 }

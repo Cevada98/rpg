@@ -7,12 +7,12 @@ import java.util.List;
 
 public class DialogState implements GameState {
 
-    private final GameContext manager;
+    private final DialogDeps manager;
     private final String npcName;
     private final List<String> lines;
     private int currentLine;
 
-    public DialogState(GameContext manager, String npcName, List<String> lines) {
+    public DialogState(DialogDeps manager, String npcName, List<String> lines) {
         this.manager = manager;
         this.npcName = npcName;
         this.lines = lines;
@@ -39,10 +39,10 @@ public class DialogState implements GameState {
                 showCurrentLine();
             } else {
                 manager.getWorldPanel().addLogEntry("> " + npcName + " walks away.", TextColor.ANSI.WHITE);
-                manager.transitionTo(new ExploringState(manager));
+                manager.transitionTo(manager.newExploringState());
             }
         } else if (action == GameAction.LEAVE) {
-            manager.transitionTo(new ExploringState(manager));
+            manager.transitionTo(manager.newExploringState());
         }
     }
 

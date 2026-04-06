@@ -1,5 +1,7 @@
 package be.cevada.combat;
 
+import be.cevada.data.EnemyRegistry;
+import be.cevada.data.GameRandom;
 import be.cevada.models.Enemy;
 import be.cevada.models.Player;
 
@@ -7,7 +9,13 @@ import java.util.Random;
 
 public class CombatEngine {
 
-    private static final Random RNG = new Random();
+    private static final Random RNG = GameRandom.get();
+
+    public static final double CRIT_CHANCE   = 0.10;
+    public static final double MISS_CHANCE   = 0.08;
+    public static final double CRIT_MULTIPLIER = 1.75;
+
+    public record CombatResult(int damage, boolean crit, boolean miss) {}
 
     public static int calcDamage(int atk, int def) {
         int base = Math.max(1, atk - def);
@@ -29,46 +37,54 @@ public class CombatEngine {
 
     public static boolean tryFlee(int playerSpd, int enemyAtk) {
         int chance = 40 + (playerSpd * 5) - (enemyAtk * 3);
-        return RNG.nextInt(100) < Math.max(20, Math.min(80, chance));
+        return RNG.nextInt(100) < Math.clamp(chance, 20, 80);
     }
 
-    public static int playerAttack(Player player, Enemy enemy) {
+
+    public static CombatResult playerAttack(Player player, Enemy enemy) {
+        if (RNG.nextDouble() < MISS_CHANCE) {
+            return new CombatResult(0, false, true);
+        }
+        boolean crit = RNG.nextDouble() < CRIT_CHANCE;
         int damage = calcDamage(player.getAtk(), enemy.getDef());
+        if (crit) damage = (int) Math.round(damage * CRIT_MULTIPLIER);
         enemy.setHp(enemy.getHp() - damage);
-        return damage;
+        return new CombatResult(damage, crit, false);
     }
 
-    public static int playerSpecial(Player player, Enemy enemy) {
+    public static CombatResult playerSpecial(Player player, Enemy enemy) {
+        boolean crit = RNG.nextDouble() < CRIT_CHANCE;
         int damage = calcSpecialDamage(player.getAtk(), enemy.getDef());
+        if (crit) damage = (int) Math.round(damage * CRIT_MULTIPLIER);
         enemy.setHp(enemy.getHp() - damage);
         int mpCost = 4;
         player.setMp(player.getMp() - mpCost);
-        return damage;
+        return new CombatResult(damage, crit, false);
     }
 
-    public static int enemyAttack(Enemy enemy, Player player) {
-        int damage;
+    public static CombatResult enemyAttack(Enemy enemy, Player player) {
         if (player.isDefending()) {
-            damage = calcDefendedDamage(enemy.getAtk(), player.getDef());
+            int damage = calcDefendedDamage(enemy.getAtk(), player.getDef());
             player.setDefending(false);
-        } else {
-            damage = calcDamage(enemy.getAtk(), player.getDef());
+            player.setHp(player.getHp() - damage);
+            return new CombatResult(damage, false, false);
         }
+        if (RNG.nextDouble() < MISS_CHANCE / 2.0) {
+            return new CombatResult(0, false, true);
+        }
+        boolean crit = RNG.nextDouble() < CRIT_CHANCE / 2.0;
+        int damage = calcDamage(enemy.getAtk(), player.getDef());
+        if (crit) damage = (int) Math.round(damage * CRIT_MULTIPLIER);
         player.setHp(player.getHp() - damage);
-        return damage;
+        return new CombatResult(damage, crit, false);
     }
+
 
     public static Enemy randomEnemy() {
-        return switch (RNG.nextInt(4)) {
-            case 0 -> Enemy.wolf();
-            case 1 -> Enemy.goblin();
-            case 2 -> Enemy.skeleton();
-            default -> Enemy.bandit();
-        };
+        return EnemyRegistry.random();
     }
 
     public static boolean shouldEncounter() {
         return RNG.nextInt(100) < 60;
     }
 }
-

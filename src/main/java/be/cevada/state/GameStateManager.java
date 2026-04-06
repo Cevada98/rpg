@@ -1,5 +1,6 @@
 package be.cevada.state;
 
+import be.cevada.models.Enemy;
 import be.cevada.models.PlaceManager;
 import be.cevada.models.Player;
 import be.cevada.panels.ActionView;
@@ -7,7 +8,15 @@ import be.cevada.panels.StatsView;
 import be.cevada.panels.WorldView;
 import be.cevada.presenters.PlayerStatsPresenter;
 
-public class GameStateManager implements GameContext {
+import java.util.List;
+
+public class GameStateManager implements ExploringDeps,
+        CombatDeps,
+        PlacesDeps,
+        VillageDeps,
+        FarmDeps,
+        DialogDeps,
+        QuestDeps {
 
     private final Player player;
     private final StatsView statsPanel;
@@ -18,13 +27,13 @@ public class GameStateManager implements GameContext {
     private GameState currentState;
 
     public GameStateManager(Player player, StatsView statsPanel, WorldView worldPanel,
-                            ActionView actionsPanel, Runnable onQuit) {
+                            ActionView actionsPanel, Runnable onQuit, PlaceManager placeManager) {
         this.player = player;
         this.statsPanel = statsPanel;
         this.worldPanel = worldPanel;
         this.actionsPanel = actionsPanel;
         this.onQuit = onQuit;
-        this.placeManager = new PlaceManager();
+        this.placeManager = placeManager;
     }
 
     @Override
@@ -46,6 +55,7 @@ public class GameStateManager implements GameContext {
                 }
             });
         }
+        actionsPanel.focusFirst();
     }
 
     @Override
@@ -67,5 +77,44 @@ public class GameStateManager implements GameContext {
 
     @Override
     public PlaceManager getPlaceManager() { return placeManager; }
-}
 
+    @Override
+    public ExploringState newExploringState() {
+        return new ExploringState(this);
+    }
+
+    @Override
+    public CombatState newCombatState(Enemy enemy) {
+        return new CombatState(this, enemy);
+    }
+
+    @Override
+    public CombatState newCombatState(Enemy enemy, Runnable onDefeat) {
+        return new CombatState(this, enemy, onDefeat);
+    }
+
+    @Override
+    public PlacesState newPlacesState() {
+        return new PlacesState(this);
+    }
+
+    @Override
+    public VillageState newVillageState() {
+        return new VillageState(this);
+    }
+
+    @Override
+    public FarmState newFarmState() {
+        return new FarmState(this);
+    }
+
+    @Override
+    public QuestState newQuestState() {
+        return new QuestState(this);
+    }
+
+    @Override
+    public DialogState newDialogState(String npcName, List<String> lines) {
+        return new DialogState(this, npcName, lines);
+    }
+}

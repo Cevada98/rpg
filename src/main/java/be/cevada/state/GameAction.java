@@ -5,11 +5,13 @@ public enum GameAction {
     REST("Rest"),
     INVENTORY("Inventory"),
     PLACES("Places"),
+    QUESTS("Quests"),
     QUIT("Quit"),
 
     ATTACK("Attack"),
     SPECIAL("Special"),
     DEFEND("Defend"),
+    USE_POTION("Use Potion"),
     RUN("Run"),
     RETURN_TO_MENU("Return to Menu"),
 
@@ -28,7 +30,9 @@ public enum GameAction {
 
     TALK_TO_FARMER("Talk to Farmer"),
     ACCEPT_QUEST("Accept Quest"),
-    CLAIM_REWARD("Claim Reward");
+    CLAIM_REWARD("Claim Reward"),
+
+    ACT("Act");
 
     private final String label;
 
@@ -40,4 +44,3 @@ public enum GameAction {
         return label;
     }
 }
-

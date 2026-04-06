@@ -1,6 +1,7 @@
 package be.cevada.screens;
 
 import be.cevada.models.Player;
+import be.cevada.models.PlaceManager;
 import be.cevada.panels.ActionsPanel;
 import be.cevada.panels.StatsPanel;
 import be.cevada.panels.WorldPanel;
@@ -28,8 +29,9 @@ public class GameScreen extends AbstractScreen {
         actionsPanel = new ActionsPanel();
 
         Player player = new Player("Hero");
+        PlaceManager placeManager = new PlaceManager();
 
-        stateManager = new GameStateManager(player, statsPanel, worldPanel, actionsPanel, this::close);
+        stateManager = new GameStateManager(player, statsPanel, worldPanel, actionsPanel, this::close, placeManager);
         PlayerStatsPresenter.sync(player, statsPanel);
         stateManager.transitionTo(new ExploringState(stateManager));
 

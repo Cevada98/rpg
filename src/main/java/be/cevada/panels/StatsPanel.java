@@ -19,6 +19,7 @@ public class StatsPanel implements StatsView {
     private final Label goldLabel;
     private final Label lvlLabel;
     private final Label xpLabel;
+    private final Label potionLabel;
 
     public StatsPanel() {
         Panel content = new Panel();
@@ -74,6 +75,14 @@ public class StatsPanel implements StatsView {
         xpLabel.setForegroundColor(TextColor.ANSI.GREEN);
         content.addComponent(xpLabel);
 
+        content.addComponent(new EmptySpace(TerminalSize.ONE));
+        content.addComponent(new Label("---------------"));
+        content.addComponent(new EmptySpace(TerminalSize.ONE));
+
+        potionLabel = new Label(" Potions: 3");
+        potionLabel.setForegroundColor(TextColor.ANSI.GREEN_BRIGHT);
+        content.addComponent(potionLabel);
+
         panel = new Panel();
         panel.setLayoutManager(new BorderLayout());
         panel.setPreferredSize(new TerminalSize(22, 1));
@@ -121,5 +130,10 @@ public class StatsPanel implements StatsView {
 
     public void setXp(int current, int max) {
         xpLabel.setText(String.format(" XP:    %d / %d", current, max));
+    }
+
+    @Override
+    public void setPotions(int value) {
+        potionLabel.setText(String.format(" Potions: %d", value));
     }
 }

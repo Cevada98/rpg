@@ -7,12 +7,12 @@ import com.googlecode.lanterna.TextColor;
 
 public class FarmState implements GameState {
 
-    private final GameContext manager;
+    private final FarmDeps manager;
     private String subMenu;
 
     public static final String RAT_QUEST_ID = "hunt_giant_rats";
 
-    public FarmState(GameContext manager) {
+    public FarmState(FarmDeps manager) {
         this.manager = manager;
         this.subMenu = "main";
     }
@@ -47,7 +47,7 @@ public class FarmState implements GameState {
     private void handleMain(GameAction action) {
         switch (action) {
             case TALK_TO_FARMER -> showFarmer();
-            case LEAVE -> manager.transitionTo(new ExploringState(manager));
+            case LEAVE -> manager.transitionTo(manager.newExploringState());
             default -> {
             }
         }

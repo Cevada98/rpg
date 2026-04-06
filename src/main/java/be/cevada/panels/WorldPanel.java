@@ -6,9 +6,6 @@ import com.googlecode.lanterna.gui2.*;
 import com.googlecode.lanterna.gui2.BorderLayout;
 import com.googlecode.lanterna.gui2.LinearLayout;
 
-/**
- * Center/right panel showing location, description, and event log.
- */
 public class WorldPanel implements WorldView {
 
     private final Panel panel;
@@ -46,18 +43,15 @@ public class WorldPanel implements WorldView {
 
         content.addComponent(new EmptySpace(TerminalSize.ONE));
 
-        // Log entries container — easy to clear and repopulate
         logContent = new Panel();
         logContent.setLayoutManager(new LinearLayout(Direction.VERTICAL));
         content.addComponent(logContent);
 
-        // Add some default log entries
         addLogEntry("> You entered the Dark Forest.", TextColor.ANSI.WHITE);
         addLogEntry("> A wolf appears!", TextColor.ANSI.RED_BRIGHT);
         addLogEntry("> You strike the wolf for 5 damage.", TextColor.ANSI.YELLOW);
         addLogEntry("> The wolf flees into the shadows.", TextColor.ANSI.WHITE);
 
-        // Wrap in bordered panel — BorderLayout.CENTER fills remaining space
         panel = new Panel();
         panel.setLayoutManager(new BorderLayout());
         panel.addComponent(
@@ -66,12 +60,9 @@ public class WorldPanel implements WorldView {
         );
     }
 
-    /** Returns the assembled panel, ready to be added to a layout. */
     public Panel getPanel() {
         return panel;
     }
-
-    // --- Update methods for game logic ---
 
     public void setLocation(String location) {
         locationLabel.setText(location);
